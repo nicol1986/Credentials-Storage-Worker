@@ -164,34 +164,27 @@ function handleStaticHTML(request) {
                   if (response.ok) {
                       showMessage(\`Credential \${isUpdating ? 'updated' : 'saved'} successfully!\`, 'success');
                       
-                      // *** OPTIMIZATION LOGIC START ***
-                      if (isUpdating) {
-                          // Update only the specific credential row in the table
-                          const row = document.querySelector(\`tr[data-id='\${currentEditingId}']\`);
-                          if (row) {
-                              row.innerHTML = \`
-                                  <td>\${escapeHTML(service)}</td>
-                                  <td>\${escapeHTML(username)}</td>
-                                  <td>\${escapeHTML(password)}</td>
-                                  <td>
-                                      <button class="action-btn update-btn" onclick="startUpdate('\${currentEditingId}', '\${escapeHTML(service)}', '\${escapeHTML(username)}', '\${escapeHTML(password)}')">Update</button>
-                                      <button class="action-btn delete-btn" onclick="deleteCredential('\${currentEditingId}')">Delete</button>
-                                  </td>
-                              \`;
-                          }
-                      } else {
-                          // For NEW credentials, optimistically update the UI
-                          const newCredData = await response.json(); // { id, service } from backend
-                          addCredentialToTable({ id: newCredData.id, service, username, password });
-                      }
-                      // *** OPTIMIZATION LOGIC END ***
-
+                      // 统一使用延迟重新加载方式，增加延迟时间确保数据同步
+                      setTimeout(() => {
+                          loadCredentials();
+                      }, 300);
+                      
                       cancelUpdate();
                   } else { 
+                      // 即使服务器返回错误，也尝试重新加载凭证列表以确保显示最新数据
+                      setTimeout(() => {
+                          loadCredentials();
+                      }, 300);
+                      
                       const data = await response.json();
                       showMessage(data.error || 'Failed to save credential', 'error');
                   }
               } catch (error) { 
+                  // 即使网络错误，也尝试重新加载凭证列表以确保显示最新数据
+                  setTimeout(() => {
+                      loadCredentials();
+                  }, 300);
+                  
                   showMessage('Network error during save. Please try again.', 'error'); 
               }
           }
@@ -211,25 +204,6 @@ function handleStaticHTML(request) {
               } catch (error) { 
                   showMessage('Network error during load. Please try again.', 'error'); 
               }
-          }
-
-          function addCredentialToTable(cred, decrypted = true) {
-              const row = credentialsListBody.insertRow(0); // Add to the top of the table
-              const escapedService = escapeHTML(cred.service);
-              const escapedUsername = escapeHTML(decrypted ? cred.username : 'decrypting...');
-              const escapedPassword = escapeHTML(decrypted ? cred.password : 'decrypting...');
-
-              row.innerHTML = \`
-                  <td>\${escapedService}</td><td>\${escapedUsername}</td><td>\${escapedPassword}</td>
-                  <td>
-                      <button class="action-btn update-btn" onclick="startUpdate('\${cred.id}', '\${escapedService}', '\${escapedUsername}', '\${escapedPassword}')">Update</button>
-                      <button class="action-btn delete-btn" onclick="deleteCredential('\${cred.id}')">Delete</button>
-                  </td>
-              \`;
-
-              // If this is the first item, hide the "no credentials" message.
-              noCredentialsMessage.classList.add('hidden');
-              credentialsTable.classList.remove('hidden');
           }
 
           async function displayCredentials(credentials) {
@@ -256,6 +230,7 @@ function handleStaticHTML(request) {
                               <button class="action-btn delete-btn" onclick="deleteCredential('\${cred.id}')">Delete</button>
                           </td>
                       \`;
+                      row.setAttribute('data-id', cred.id);
                   } catch (error) {
                       row.innerHTML = \`<td>\${escapeHTML(cred.service)}</td><td colspan="3" class="error">Error decrypting data.</td>\`;
                   }
@@ -268,7 +243,9 @@ function handleStaticHTML(request) {
                   const response = await fetch(\`/api/credentials/\${id}\`, { method: 'DELETE', headers: { 'Authorization': \`Bearer \${authToken}\` } });
                   if (response.ok) { 
                       showMessage('Credential deleted successfully!', 'success'); 
-                      loadCredentials(); // Full reload is fine after delete.
+                      setTimeout(() => {
+                          loadCredentials();
+                      }, 100);
                   } else { 
                       const data = await response.json(); 
                       showMessage(data.error || 'Failed to delete credential', 'error'); 
