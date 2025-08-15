@@ -1,5 +1,5 @@
 # Credentials-Storage-Worker
-Use Cloudflare Workers to save  Credentials, simple functions.
+Use Cloudflare Workers to save  Credentials, simple functions.Easy to use.
 
 
 # How to use:
