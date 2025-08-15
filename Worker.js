@@ -19,8 +19,8 @@ function handleStaticHTML(request) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Secure Credential Storage</title>
         <style>
-          body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
-          .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          body { font-family: Arial, sans-serif; width: 90%; margin: 0 auto; padding: 20px; background-color: #f5f5f5; font-size: 14px; }
+          .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 100%; margin: 0 auto; box-sizing: border-box; }
           .hidden { display: none; }
           input, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
           button { background-color: #4CAF50; color: white; border: none; cursor: pointer; }
@@ -36,6 +36,8 @@ function handleStaticHTML(request) {
           .data-table th { background-color: #f2f2f2; font-weight: bold; }
           .data-table tr:nth-child(even) { background-color: #f9f9f9; }
           .data-table tr:hover { background-color: #f1f1f1; }
+          /* 调整用户名和密码的字体大小 */
+          .data-table td:nth-child(2), .data-table td:nth-child(3) { font-size: 14px; }
           .action-btn { padding: 5px 10px; width: auto; font-size: 12px; border-radius: 4px; margin-right: 5px; }
           .update-btn { background-color: #2196F3; }
           .update-btn:hover { background-color: #0b7dda; }
@@ -46,6 +48,9 @@ function handleStaticHTML(request) {
           #cancel-update-btn:hover { background-color: #616161; }
           .log-status-success { color: #4CAF50; font-weight: bold; }
           .log-status-failure { color: #f44336; font-weight: bold; }
+          /* 登录历史记录字体大小 */
+          #logs-table { font-size: 12px; }
+          #logs-table th, #logs-table td { font-size: 12px; }
         </style>
       </head>
       <body>
@@ -66,7 +71,8 @@ function handleStaticHTML(request) {
                 <input type="hidden" id="credential-id">
                 <input type="text" id="service-name" placeholder="Service Name (e.g., Gmail)">
                 <input type="text" id="username" placeholder="Username">
-                <input type="password" id="credential-password" placeholder="Password">
+                <!-- 修改密码输入框为明文显示 -->
+                <input type="text" id="credential-password" placeholder="Password">
                 <div class="form-buttons">
                     <button id="save-btn">Save Credential</button>
                     <button id="cancel-update-btn" class="hidden">Cancel Update</button>
@@ -160,10 +166,21 @@ function handleStaticHTML(request) {
                       
                       // *** OPTIMIZATION LOGIC START ***
                       if (isUpdating) {
-                          // For updates, a full reload is reliable because the key list hasn't changed.
-                          loadCredentials();
+                          // Update only the specific credential row in the table
+                          const row = document.querySelector(\`tr[data-id='\${currentEditingId}']\`);
+                          if (row) {
+                              row.innerHTML = \`
+                                  <td>\${escapeHTML(service)}</td>
+                                  <td>\${escapeHTML(username)}</td>
+                                  <td>\${escapeHTML(password)}</td>
+                                  <td>
+                                      <button class="action-btn update-btn" onclick="startUpdate('\${currentEditingId}', '\${escapeHTML(service)}', '\${escapeHTML(username)}', '\${escapeHTML(password)}')">Update</button>
+                                      <button class="action-btn delete-btn" onclick="deleteCredential('\${currentEditingId}')">Delete</button>
+                                  </td>
+                              \`;
+                          }
                       } else {
-                          // For NEW credentials, we optimistically update the UI to avoid KV list delay.
+                          // For NEW credentials, optimistically update the UI
                           const newCredData = await response.json(); // { id, service } from backend
                           addCredentialToTable({ id: newCredData.id, service, username, password });
                       }
@@ -453,7 +470,7 @@ async function logLoginAttempt(env, logEntry) {
         const logsJson = await env.LOG_KV.get('LOGIN_LOGS') || '[]';
         const logs = JSON.parse(logsJson);
         logs.unshift(logEntry);
-        const updatedLogs = logs.slice(0, 5);
+        const updatedLogs = logs.slice(0, 10);
         await env.LOG_KV.put('LOGIN_LOGS', JSON.stringify(updatedLogs));
     } catch (e) {
         console.error("Failed to log login attempt:", e);
