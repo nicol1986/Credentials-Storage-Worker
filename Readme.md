@@ -32,7 +32,7 @@ wrangler kv:namespace create "CREDENTIALS"
 wrangler kv:namespace create "LOG_KV"
 ```
 
-### 2. Configure wrangler.toml
+### 2. Configure wrangler.toml/Or set up manually
 
 Create a `wrangler.toml` file in your project root with the following content:
 
@@ -58,7 +58,7 @@ kv_namespaces = [
 
 Replace `your_account_id`, `your_credentials_namespace_id`, and `your_logs_namespace_id` with actual values from your Cloudflare account.
 
-### 3. Set Secrets
+### 3. Set Secrets /Or set up manually
 
 The application requires three secret values that should never be hardcoded:
 
